@@ -16,6 +16,6 @@ To replicate the findings:
 
 1. Clone this repository:
    ```bash
-   git clone 
+   git clone https://github.com/0x0checo/NLP.git
    cd phonetic-clarity-surprisal
 
