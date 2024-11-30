@@ -14,7 +14,7 @@ The analysis is based on the following datasets:
 ## Usage
 To replicate the findings:
 
-Clone this repository:
+- **Clone this repository**:
    ```bash
    git clone https://github.com/0x0checo/NLP.git
    cd NLP
@@ -37,6 +37,6 @@ To run the project locally, ensure you have Python installed and the necessary t
 1. Clone the repository.
 2. Ensure you have access to the MAUS tool and follow its guidelines for processing speech data.
 
-## Licence##
+## License 
 This project is licensed under the MIT License. Feel free to use, modify, and distribute the code with proper attribution.
 
