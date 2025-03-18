@@ -4,7 +4,7 @@ $$
 \hat{y}_i = \theta_1 \cdot x_i + \theta_0
 $$
 
-predicting a value \(\hat{y}_i\) for each input data point \(x_i\), given the parameters \(\theta_0\) as intercept and \(\theta_1\) as the slope. This is the same model as in the maths course from last semester. Since we will be using NumPy and scikit-learn a lot throughout the course, you are expected to follow some conventions from the scikit-learn API. This will be enforced using test-driven development, where you are given a set of unit tests that must run without error for you to pass the exercise.
+predicting a value (\hat{y}_i\) for each input data point (x_i\), given the parameters (\theta_0\) as intercept and (\theta_1\) as the slope. This is the same model as in the maths course from last semester. Since we will be using NumPy and scikit-learn a lot throughout the course, you are expected to follow some conventions from the scikit-learn API. This will be enforced using test-driven development, where you are given a set of unit tests that must run without error for you to pass the exercise.
 
 The code for training the model is given, but the predictions and finding the residual must be implemented. A base to start from can be found in the course repo. You will have to implement the following functionality (this is also a suggestion for implementation order):
 
