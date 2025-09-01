@@ -42,4 +42,5 @@ for file in input_files:
 
 # 写入新的json文件
 with open(save_path, 'w', encoding='utf-8') as f:
+
     json.dump(datas, f, ensure_ascii=False, indent=4)
