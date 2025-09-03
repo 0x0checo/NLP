@@ -15,6 +15,7 @@ LN 完全不依赖 batch size，保证一致性。
 ✅ 原因 2：Transformer 的输入是序列
 在 Transformer 中，每个 token 都有一个 embedding 向量，LN 是在 embedding 的维度上做归一化，非常自然。
 如果用 BN，会在 batch 内不同句子的 token 之间混合统计量，反而破坏语义。
+（想想limu的立方体！！！）
 
 ✅ 原因 3：训练/推理一致性
 BN 在训练和推理阶段使用的统计量不同（训练时用 mini-batch 统计，推理时用移动平均），可能带来不一致问题。
