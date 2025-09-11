@@ -92,14 +92,27 @@ Encoder 和 Decoder 的交互 主要发生在 Decoder 的第二个子层：Encod
 
 **13.Transformer的并行化体现在哪个地方？Decoder端可以做并行化吗？**
 
-1. 多头自注意力机制的并行计算：
-   - 在每个位置的多头注意力计算中，各个头的计算是相互独立的，可以同时进行。同时，序列中不同位置自     - 注意力也可以并行计算，使得整体的注意力计算具有高度并行性。
+1. **Self-Attention 机制的并行化**：
+   - Self-attention 是 Transformer 的核心组件，计算时每个 token 的注意力分数不依赖于其他 token 的计算结果。这种无序依赖允许所有 token 的注意力计算通过矩阵运算（如点积）并行完成。具体来说，输入序列的 Query、Key 和 Value 向量通过矩阵乘法一次性计算，时间复杂度为 O(n²)，但计算过程可以高度并行化，利用 GPU 或 TPU 的并行计算能力。
+   - 与 RNN 不同，RNN 需要按时间步顺序计算，当前时间步的隐藏状态依赖于前一时间步，导致无法并行。Self-attention 消除了这种时间依赖，显著提升计算效率。
 
-2. Transformer层内部的并行化：
-   - 每个Transformer层中的子模块（多头自注意力、前馈网络）可以并行执行，因为它们是独立的操作。意    - 味着多个Transformer层可以在硬件层面同时进行计算（流水线并行化），或者在单个层内实现GPU多核的并行。
+2. **多头注意力（Multi-Head Attention）的并行化**：
+   - Transformer 采用多头注意力机制，将输入分成多个子空间，每一头独立计算注意力。这种设计允许不同头的计算并行执行，进一步提高效率。每个头的计算是独立的，互不干扰，可以同时在多个计算单元上运行。
+   - 多头机制还增加了模型的表达能力，同时保持并行性。
 
-3. 序列长度的处理：
-   - 在训练时，为了利用GPU的并行优势，通常会把整个批次中的序列填充到相同长度，并同时输入模型，得     - 每个序列中的每个位置都能同步进行处理。
+3. **Feed-Forward 神经网络的并行化**：
+   - Transformer 的每一层包含一个逐位置（position-wise）的前馈神经网络（FFN），对序列中的每个 token 独立应用相同的线性变换和激活函数。由于每个 token 的 FFN 计算不依赖其他 token，结果可以并行计算。这种逐位置的操作非常适合 GPU 的并行架构。
+
+4. **层间并行与批量处理**：
+   - Transformer 的编码器和解码器由多层堆叠组成，每一层内的计算（如 self-attention 和 FFN）是并行的。虽然层与层之间存在数据依赖（上一层的输出作为下一层的输入），但同一层内的所有操作都可以并行化。
+   - 在训练和推理过程中，Transformer 支持批量处理（batch processing），多个序列（句子）可以同时输入模型，矩阵运算进一步放大并行化的优势。
+
+5. **并行化的硬件优化**：
+   - Transformer 的矩阵运算（如注意力分数计算、线性变换）非常适合现代硬件加速器（如 GPU 和 TPU）的并行计算架构。这些硬件可以同时处理大量矩阵运算，充分发挥 Transformer 的并行优势。
+   - 例如，注意力机制中的 scaled dot-product attention 通过高效的矩阵乘法库（如 cuBLAS）实现并行化。
+
+**总结**：
+Transformer 的并行化主要体现在 self-attention 机制（所有 token 同时计算）、多头注意力（各头独立并行）、逐位置的前馈网络（独立计算）以及批量处理。这些特性使 Transformer 能够充分利用现代计算硬件，显著提高训练和推理速度，相比 RNN 和 LSTM 等顺序模型更高效。
 
 关于 Decoder端是否可以做并行化：
 
@@ -113,6 +126,123 @@ Decoder的自注意力部分可以并行化（使用掩码方式），因为每�
 
 - 缓存机制：在每一步保存前一阶段的注意力计算结果，只更新新位置的计算，从而避免重复全部重新计算。
 - 并行化批次：可以同时处理多个序列或多个生成任务，实现一定程度的并行。
+
+**14.简单描述一下wordpiece model 和 byte pair encoding。**
+
+**WordPiece Model**:
+- **定义**: WordPiece 是一种子词（subword）分割算法，用于将单词拆分为更小的单元（子词或字符片段），常用于 NLP 模型如 BERT。
+- **工作原理**: 从训练语料库构建词汇表，初始为字符集，通过迭代合并高频子词对，生成固定大小的子词词汇表。分割时，优先选择最长的子词匹配。
+- **特点**: 平衡了词级别和字符级别的表示，减少未知词（OOV）问题，适合处理多语言和稀有词。
+- **应用**: BERT、Electra 等模型的预处理。
+
+**Byte Pair Encoding (BPE)**:
+- **定义**: BPE 是一种数据压缩算法，应用于 NLP 中进行子词分割，常见于 Transformer 模型如 GPT。
+- **工作原理**: 从字符级开始，统计语料中相邻符号对的频率，迭代合并最高频的符号对，生成子词词汇表。分割时，基于词汇表逐次合并字符。
+- **特点**: 无需预定义词汇表大小，动态生成子词，适应性强，处理 OOV 效果好。
+- **应用**: GPT、RoBERTa、T5 等模型的 tokenization。
+
+**区别**:
+- WordPiece 基于最大化似然选择子词，BPE 基于频率合并。
+- WordPiece 常用于 Google 的模型，BPE 更广泛应用于开源模型。
+- WordPiece 可能生成更短的子词，BPE 倾向于更长的子词。
+
+**15.Transformer训练的时候学习率是如何设定的？Dropout是如何设定的，位置在哪里？Dropout 在测试的需要有什么需要注意的吗？**
+
+---
+
+## 1. **学习率设定（Learning Rate Schedule）**
+
+Transformer 里最经典的做法是 **学习率预热（warmup）+衰减**，来自原始论文 *Attention is All You Need*：
+
+学习率随训练步数 $t$ 的变化公式：
+
+$$
+\text{lr}(t) = d_{\text{model}}^{-0.5} \cdot \min\left(t^{-0.5},\ t \cdot \text{warmup\_steps}^{-1.5}\right)
+$$
+
+* $d_{\text{model}}$：embedding 维度（比如 512 或 768）。
+* **warmup\_steps**：预热步数（比如 4000 步），在这之前学习率 **线性增加**；之后 **按 $1/\sqrt{t}$ 衰减**。
+* 直观理解：先小心地增加学习率，等模型稳定了再逐步减小。
+
+现代实现（如 Hugging Face）里，可以选择：
+
+* **Adam + warmup + cosine decay**（常见）
+* **AdamW + one-cycle LR**（更适合大规模训练）
+
+---
+
+## 2. **Dropout 的设定与位置**
+
+在 Transformer 中，Dropout 用来缓解过拟合，主要出现在以下几个地方：
+
+1. **Attention 权重之后**：
+
+   $$
+   \text{Dropout}(\text{Softmax}(QK^T / \sqrt{d_k}))
+   $$
+
+   防止模型过度依赖某几个 token。
+
+2. **子层输出（Sub-layer output）之后**：
+   在 **Add & Norm** 之前加 Dropout：
+
+   $$
+   \text{LayerNorm}(x + \text{Dropout}(\text{Sublayer}(x)))
+   $$
+
+3. **前馈网络（FFN）中的隐层**：
+   在两个全连接层之间加 Dropout。
+
+4. **输入嵌入（word embedding + positional encoding）之后**：
+   有的实现会在输入 embedding 上也加 Dropout。
+
+⚙️ 常见的 Dropout rate：**0.1 \~ 0.3**（原始论文用 0.1）。
+
+---
+
+## 3. **Dropout 在测试时的注意事项**
+
+* **训练时**：Dropout 随机屏蔽一部分神经元。
+* **测试/推理时**：Dropout 会自动关闭（框架如 PyTorch / TensorFlow 会帮你处理），并按训练时的期望值缩放权重。
+* 因此 **测试时不需要手动加 Dropout**，只要记得 `model.eval()`（PyTorch）或 `training=False`（TF/Keras）。
+
+如果忘记关闭，会导致结果 **随机、性能下降**。
+
+---
+
+✅ 总结：
+
+* **学习率**：warmup + 衰减（经典是 $d_{\text{model}}^{-0.5}$ \* min(...))。
+* **Dropout**：用在 **Attention 权重、子层输出、FFN 隐层、输入 embedding**。
+* **测试时**：Dropout 自动关闭，只要切到 eval 模式即可。
+
+---
+
+**16.bert的mask为何不学习transformer在attention处进行屏蔽score的技巧？**
+
+BERT 的 mask（掩码）机制与 Transformer 在注意力机制中屏蔽分数的技巧（例如解码器的自回归掩码）有不同目标，因此设计上有所差异。以下简要分析为何 BERT 未采用 Transformer 在注意力处的分数屏蔽技巧：
+
+1. **任务目标不同**：
+   - **Transformer（解码器）**：在自回归生成任务中，屏蔽未来 token 的注意力分数（causal masking）是为了确保模型只依赖当前及之前的 token，符合生成任务的顺序依赖。
+   - **BERT**：采用掩码语言模型（MLM）任务，随机掩码 15% 的输入 token，目标是预测这些被掩码的 token。BERT 的双向上下文建模需要所有 token（包括未掩码的）同时参与注意力计算，因此不需要像解码器那样的单向屏蔽。
+
+2. **BERT 的掩码机制**：
+   - BERT 在输入层直接将部分 token 替换为 [MASK]（80%）、随机 token（10%）或保持原样（10%），然后通过 self-attention 建模整个序列的上下文。
+   - 这种掩码发生在输入 embedding 阶段，而非注意力分数的屏蔽。注意力机制本身是全连接的，允许所有 token 相互交互，以捕获双向语义。
+
+3. **为何不屏蔽注意力分数**：
+   - **双向性需求**：BERT 的核心是双向建模，屏蔽注意力分数（如 Transformer 解码器的三角掩码）会限制模型看到部分 token，破坏双向上下文学习，降低 MLM 任务效果。
+   - **计算效率**：在输入层直接掩码 token 比在注意力分数矩阵上动态屏蔽更简单，计算开销更低，且易于并行化。
+   - **任务适配性**：MLM 任务通过掩码 token 模拟“填空”预测，输入层的 [MASK] 标记足以提供缺失信息信号，无需在注意力层额外屏蔽。
+
+4. **技术差异**：
+   - Transformer 解码器的注意力屏蔽通过在 softmax 前对分数矩阵施加负无穷大掩码实现，强制未来 token 的注意力权重为 0。
+   - BERT 的 MLM 通过替换输入 token 实现掩码，注意力机制保持标准 self-attention 计算，允许所有 token 自由交互。
+
+**总结**：
+BERT 未采用 Transformer 注意力分数的屏蔽技巧，因为其 MLM 任务需要双向上下文，输入层掩码已足够实现预测目标。屏蔽注意力分数会限制双向性，且增加不必要的复杂性。
+
+
 
 
 
