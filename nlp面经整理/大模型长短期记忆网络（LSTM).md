@@ -8,7 +8,7 @@
 
 LSTM（Long Short-Term Memory）是RNN的一种变体，由Hochreiter和Schmidhuber在1997年提出。它引入了**细胞状态（cell state)**作为信息高速公路，以及三个门机制来控制信息的流动：
 
-- **遗忘门（Forget Gate）**：决定哪些信息从细胞状态中丢弃。计算：$ f_t = \sigma(W_f \cdot [h_{t-1}, x_t] + b_f) $，其中\$\sigma\$是sigmoid函数。
+- **遗忘门（Forget Gate）**：决定哪些信息从细胞状态中丢弃。计算：$f_t = \sigma(W_f \cdot [h_{t-1}, x_t] + b_f)$，其中\$\sigma\$是sigmoid函数。
 - **输入门（Input Gate）**：决定哪些新信息添加到细胞状态中。包括两个部分：输入门值\( i_t = \sigma(W_i \cdot [h_{t-1}, x_t] + b_i) \)，和候选细胞状态\( \tilde{C_t} = \tanh(W_C \cdot [h_{t-1}, x_t] + b_C) \)。
 - **输出门（Output Gate）**：决定哪些信息从细胞状态输出到隐藏状态。计算：\( o_t = \sigma(W_o \cdot [h_{t-1}, x_t] + b_o) \)，然后隐藏状态\( h_t = o_t \cdot \tanh(C_t) \)。
 
