@@ -2,7 +2,7 @@
 
 #  Retrieval-Augmented Generation (RAG)
 
-**RAG（Retrieval-Augmented Generation）** 是一种结合了 **信息检索（Retrieval）** 和 **文本生成（Generation）** 的方法，旨在让语言模型在生成回答时能够**利用外部知识库**，从而减少“幻觉”（hallucination）并提升事实准确性。
+**RAG（Retrieval-Augmented Generation** 是一种结合了 **信息检索（Retrieval** 和 **文本生成（Generation** 的方法，旨在让语言模型在生成回答时能够**利用外部知识库**，从而减少“幻觉”（hallucination）并提升事实准确性。
 
 ---
 
