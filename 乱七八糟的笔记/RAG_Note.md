@@ -173,3 +173,239 @@ print(qa.run("What is RAG?"))
 ---
 
 
+---
+
+# 🧩 LangChain 全面介绍与使用指南
+
+LangChain 是一个开源框架，用来**让语言模型（LLM）与外部数据、工具、API、数据库交互**。
+它让你可以非常方便地构建：
+
+* RAG（检索增强生成）
+* 聊天机器人（ChatBot）
+* 文档问答系统（Doc QA）
+* 多步推理代理（Agent）
+* 工具增强型应用（如联网搜索、代码执行等）
+
+---
+
+## 🌐 一、LangChain 的核心理念
+
+> “让语言模型不仅能生成文字，还能**调用工具、使用记忆、访问外部知识**。”
+
+LangChain 的核心是 **Chain（链式结构）**：
+
+```
+User Input ─▶ Prompt ─▶ LLM ─▶ Output
+```
+
+在 RAG 应用中，这条链可能会扩展成：
+
+```
+User Question ─▶ Retriever ─▶ Documents ─▶ LLM ─▶ Answer
+```
+
+---
+
+## 🧠 二、LangChain 的核心组件
+
+LangChain 模块化设计，主要由以下部分组成：
+
+| 模块                  | 作用                             | 示例                                        |
+| ------------------- | ------------------------------ | ----------------------------------------- |
+| **LLM**             | 调用大语言模型（如 GPT-4、Claude、Gemini） | `ChatOpenAI`, `ChatAnthropic`             |
+| **Prompt Template** | 组织提示词                          | `PromptTemplate`                          |
+| **Chain**           | 串联多个模块形成流程                     | `LLMChain`, `RetrievalQA`                 |
+| **Retriever**       | 从知识库中检索相关文档                    | `FAISS`, `Chroma`, `BM25`                 |
+| **Memory**          | 让对话具备上下文记忆                     | `ConversationBufferMemory`                |
+| **Agent**           | 让模型自动决定下一步调用的工具                | `initialize_agent`                        |
+| **Tool**            | 外部功能接口（搜索、计算、爬虫）               | `SerpAPI`, `Python REPL`, `Wikipedia API` |
+
+---
+
+## ⚙️ 三、LangChain 安装与环境准备
+
+```bash
+pip install langchain openai faiss-cpu chromadb tiktoken
+```
+
+（可选）使用 `.env` 文件保存 API key：
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+```
+
+---
+
+## 🧩 四、RAG 基本示例：检索增强问答
+
+### 1️⃣ 导入模块
+
+```python
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
+from langchain.vectorstores import FAISS
+from langchain.embeddings import OpenAIEmbeddings
+```
+
+### 2️⃣ 构建向量数据库
+
+```python
+texts = [
+    "LangChain is a framework for developing applications powered by language models.",
+    "RAG stands for Retrieval-Augmented Generation."
+]
+
+embeddings = OpenAIEmbeddings()
+db = FAISS.from_texts(texts, embeddings)
+retriever = db.as_retriever()
+```
+
+### 3️⃣ 创建 LLM 模型与 QA 链
+
+```python
+llm = ChatOpenAI(model="gpt-4")
+qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+```
+
+### 4️⃣ 提问
+
+```python
+query = "What is LangChain?"
+result = qa_chain.run(query)
+print(result)
+```
+
+🟢 **输出示例：**
+
+```
+LangChain is a framework that helps developers build applications powered by large language models.
+```
+
+---
+
+## 💬 五、添加 Memory（记忆机制）
+
+LangChain 的记忆让多轮对话有上下文。
+
+```python
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
+memory = ConversationBufferMemory(memory_key="chat_history")
+prompt = PromptTemplate(
+    input_variables=["chat_history", "question"],
+    template="The following is a conversation:\n{chat_history}\nHuman: {question}\nAI:"
+)
+
+chain = LLMChain(llm=ChatOpenAI(model="gpt-4"), prompt=prompt, memory=memory)
+
+print(chain.run("Hi, who are you?"))
+print(chain.run("What did I just ask you?"))
+```
+
+---
+
+## 📚 六、RAG + 文档问答（PDF / TXT / Markdown）
+
+使用 **Chroma** 或 **FAISS** 作为向量数据库，结合 LangChain 的文档加载器。
+
+```python
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
+
+# 加载本地文档
+loader = TextLoader("your_notes.txt")
+docs = loader.load()
+
+# 分块（chunking）
+splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+docs = splitter.split_documents(docs)
+
+# 创建嵌入 + 向量数据库
+embeddings = OpenAIEmbeddings()
+db = Chroma.from_documents(docs, embeddings)
+
+retriever = db.as_retriever(search_kwargs={"k": 3})
+llm = ChatOpenAI(model="gpt-4")
+
+# 创建 RAG QA 链
+qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+print(qa.run("总结一下文档的主要内容"))
+```
+
+---
+
+## 🧠 七、Agent：让模型能自动调用工具
+
+LangChain 的 Agent 允许模型自动决定使用哪个工具。
+例如让 GPT 自己调用“Google Search”、“Calculator”等。
+
+```python
+from langchain.agents import load_tools, initialize_agent
+from langchain.chat_models import ChatOpenAI
+
+llm = ChatOpenAI(model="gpt-4")
+tools = load_tools(["wikipedia", "llm-math"], llm=llm)
+
+agent = initialize_agent(
+    tools, llm, agent_type="zero-shot-react-description", verbose=True
+)
+
+agent.run("Who is the president of Sweden, and what is 2 * 37?")
+```
+
+---
+
+## 🔍 八、常用的 LangChain 向量数据库
+
+| 数据库          | 特点                  | 适合场景         |
+| ------------ | ------------------- | ------------ |
+| **FAISS**    | Facebook 开源，纯本地，性能强 | 小型项目、本地实验    |
+| **Chroma**   | 简单易用，LangChain 官方推荐 | 文档 QA、RAG 教学 |
+| **Pinecone** | 云端 SaaS，高可扩展性       | 企业级部署        |
+| **Milvus**   | 开源分布式向量数据库          | 大规模检索系统      |
+| **Weaviate** | 支持多模态检索（文本、图片）      | 多模态 RAG      |
+
+---
+
+## 🧰 九、LangChain 的优缺点
+
+| 优点                                   | 缺点                 |
+| ------------------------------------ | ------------------ |
+| 🔹 模块化设计，灵活组合                        | 🔸 版本更新快，API 有时不稳定 |
+| 🔹 支持几乎所有主流 LLM                      | 🔸 性能依赖底层数据库配置     |
+| 🔹 丰富的 retriever / agent / memory 组件 | 🔸 对初学者略显复杂        |
+| 🔹 生态极大，文档齐全                         | 🔸 某些功能仍在快速迭代      |
+
+---
+
+## 🧭 十、学习与进阶资源
+
+* 官方文档：[https://python.langchain.com](https://python.langchain.com)
+* 官方 GitHub：[https://github.com/langchain-ai/langchain](https://github.com/langchain-ai/langchain)
+* YouTube 教程：搜索 “LangChain RAG Tutorial” / “LangChain Document QA”
+* 实战项目：
+
+  * 🧠 Chat-with-PDF: [https://github.com/mayooear/chatGPT-api-python](https://github.com/mayooear/chatGPT-api-python)
+  * 🧮 LangChainHub: 官方预置 prompt 和 chain 模板
+
+---
+
+## 🚀 十一、总结：LangChain 使用路线图
+
+| 阶段        | 目标          | 推荐功能                                 |
+| --------- | ----------- | ------------------------------------ |
+| 🧩 入门     | 调用 LLM 生成文本 | `LLMChain`, `PromptTemplate`         |
+| 📚 文档问答   | 加载文档 + 向量检索 | `TextLoader`, `FAISS`, `RetrievalQA` |
+| 🧠 对话记忆   | 让 AI 记住上下文  | `ConversationBufferMemory`           |
+| 🔧 工具增强   | 调用外部工具      | `Agent`, `Tool`                      |
+| 🚀 高级 RAG | 优化检索、评估输出   | `Reranker`, `EvalChain`              |
+
+---
+
+
